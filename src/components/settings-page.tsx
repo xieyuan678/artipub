@@ -1,11 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
   Globe, 
-  Key, 
   Bell, 
   User,
   Sparkles
@@ -18,17 +17,141 @@ export function SettingsPage() {
   const [openaiKey, setOpenaiKey] = useState('');
   const [anthropicKey, setAnthropicKey] = useState('');
   const [deepseekKey, setDeepseekKey] = useState('');
+  const [platformStatus, setPlatformStatus] = useState<Record<string, 'connected' | 'not-configured'>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
+
+  useEffect(() => {
+    loadAIKeys();
+    loadPlatformStatus();
+  }, []);
+
+  const loadAIKeys = async () => {
+    try {
+      const response = await fetch('/api/ai/keys?userId=default-user');
+      if (response.ok) {
+        const keys = await response.json();
+        if (keys.openai_key) setOpenaiKey('*'.repeat(keys.openai_key.length));
+        if (keys.anthropic_key) setAnthropicKey('*'.repeat(keys.anthropic_key.length));
+        if (keys.deepseek_key) setDeepseekKey('*'.repeat(keys.deepseek_key.length));
+      }
+    } catch (error) {
+      console.error('Failed to load AI keys:', error);
+    }
+  };
+
+  const loadPlatformStatus = async () => {
+    try {
+      const response = await fetch('/api/platforms/credentials?userId=default-user');
+      if (response.ok) {
+        const credentials = await response.json();
+        const status: Record<string, 'connected' | 'not-configured'> = {};
+        PLATFORMS.forEach(p => {
+          status[p.id] = credentials.some((c: { platform_id: string }) => c.platform_id === p.id) ? 'connected' : 'not-configured';
+        });
+        setPlatformStatus(status);
+      }
+    } catch (error) {
+      console.error('Failed to load platform status:', error);
+    }
+  };
 
   const handleProviderChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedProvider(event.target.value as AIProviderType);
   };
 
-  const handleSaveKeys = () => {
-    alert('API keys saved successfully!');
+  const handleSaveKeys = async () => {
+    setIsSaving(true);
+    setSaveMessage('');
+    
+    try {
+      const response = await fetch('/api/ai/keys', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: 'default-user',
+          openaiKey: openaiKey.includes('*') ? undefined : openaiKey,
+          anthropicKey: anthropicKey.includes('*') ? undefined : anthropicKey,
+          deepseekKey: deepseekKey.includes('*') ? undefined : deepseekKey,
+        }),
+      });
+
+      if (response.ok) {
+        setSaveMessage('API keys saved successfully!');
+        if (!openaiKey.includes('*')) setOpenaiKey('*'.repeat(openaiKey.length));
+        if (!anthropicKey.includes('*')) setAnthropicKey('*'.repeat(anthropicKey.length));
+        if (!deepseekKey.includes('*')) setDeepseekKey('*'.repeat(deepseekKey.length));
+      } else {
+        setSaveMessage('Failed to save API keys');
+      }
+    } catch (error) {
+      console.error('Error saving AI keys:', error);
+      setSaveMessage('Failed to save API keys');
+    } finally {
+      setIsSaving(false);
+      setTimeout(() => setSaveMessage(''), 3000);
+    }
   };
 
-  const handleConnectPlatform = (platformId: string) => {
-    alert(`Connecting to ${platformId}...`);
+  const handleConnectPlatform = async (platformId: string) => {
+    const platform = PLATFORMS.find(p => p.id === platformId);
+    if (!platform) return;
+
+    setIsSaving(true);
+    
+    try {
+      const response = await fetch('/api/platforms/credentials', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: 'default-user',
+          platformId: platformId,
+          cookies: {},
+          apiKey: '',
+        }),
+      });
+
+      if (response.ok) {
+        setPlatformStatus(prev => ({ ...prev, [platformId]: 'connected' }));
+        alert(`${platform.displayName} connected successfully!`);
+      } else {
+        alert(`Failed to connect ${platform.displayName}`);
+      }
+    } catch (error) {
+      console.error('Error connecting platform:', error);
+      alert(`Failed to connect ${platform.displayName}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDisconnectPlatform = async (platformId: string) => {
+    const platform = PLATFORMS.find(p => p.id === platformId);
+    if (!platform) return;
+
+    if (!confirm(`Are you sure you want to disconnect ${platform.displayName}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/platforms/credentials?userId=default-user&platformId=${platformId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setPlatformStatus(prev => ({ ...prev, [platformId]: 'not-configured' }));
+        alert(`${platform.displayName} disconnected successfully!`);
+      } else {
+        alert(`Failed to disconnect ${platform.displayName}`);
+      }
+    } catch (error) {
+      console.error('Error disconnecting platform:', error);
+      alert(`Failed to disconnect ${platform.displayName}`);
+    }
   };
 
   const handleToggleNotification = (notificationType: string) => {
@@ -122,9 +245,16 @@ export function SettingsPage() {
                   </p>
                 </div>
               </div>
-              <Button variant="outline" size="sm" className="mt-4" onClick={handleSaveKeys}>
-                Save API Keys
-              </Button>
+              <div className="flex items-center gap-4 mt-4">
+                <Button variant="outline" size="sm" onClick={handleSaveKeys} disabled={isSaving}>
+                  {isSaving ? 'Saving...' : 'Save API Keys'}
+                </Button>
+                {saveMessage && (
+                  <span className={`text-sm ${saveMessage.includes('successfully') ? 'text-green-600' : 'text-red-600'}`}>
+                    {saveMessage}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </CardContent>
@@ -143,27 +273,37 @@ export function SettingsPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {PLATFORMS.map((platform) => (
-              <div key={platform.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div 
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold"
-                    style={{ backgroundColor: platform.color }}
-                  >
-                    {platform.displayName.charAt(0)}
+            {PLATFORMS.map((platform) => {
+              const status = platformStatus[platform.id] || 'not-configured';
+              return (
+                <div key={platform.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div 
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold"
+                      style={{ backgroundColor: platform.color }}
+                    >
+                      {platform.displayName.charAt(0)}
+                    </div>
+                    <div>
+                      <h4 className="font-medium">{platform.displayName}</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {status === 'connected' ? 'Connected' : 'Not configured'}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-medium">{platform.displayName}</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {platform.id === 'zhihu' ? 'Connected' : 'Not configured'}
-                    </p>
+                  <div className="flex items-center gap-2">
+                    {status === 'connected' && (
+                      <Button variant="outline" size="sm" onClick={() => handleDisconnectPlatform(platform.id)}>
+                        Disconnect
+                      </Button>
+                    )}
+                    <Button variant="outline" size="sm" onClick={() => handleConnectPlatform(platform.id)}>
+                      {status === 'connected' ? 'Reconfigure' : 'Connect'}
+                    </Button>
                   </div>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => handleConnectPlatform(platform.id)}>
-                  {platform.id === 'zhihu' ? 'Reconfigure' : 'Connect'}
-                </Button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>

@@ -53,6 +53,20 @@ async function initDatabase() {
       )
     `;
 
+    console.log('创建 ai_keys 表...');
+    await sql`
+      CREATE TABLE IF NOT EXISTS ai_keys (
+        id TEXT PRIMARY KEY,
+        user_id TEXT REFERENCES users(id),
+        openai_key TEXT,
+        anthropic_key TEXT,
+        deepseek_key TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id)
+      )
+    `;
+
     console.log('创建 publishing_tasks 表...');
     await sql`
       CREATE TABLE IF NOT EXISTS publishing_tasks (
