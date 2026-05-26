@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { query, queryOne } from '@/lib/db/connection';
+import { randomUUID } from 'crypto';
 
 export async function POST(request: Request) {
   try {
@@ -26,10 +27,11 @@ export async function POST(request: Request) {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
+    const id = randomUUID();
 
     await query(
-      'INSERT INTO users (email, password_hash, name) VALUES ($1, $2, $3)',
-      [email, passwordHash, name]
+      'INSERT INTO users (id, email, password_hash, name) VALUES ($1, $2, $3, $4)',
+      [id, email, passwordHash, name]
     );
 
     return NextResponse.json(
