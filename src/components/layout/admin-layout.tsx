@@ -4,12 +4,21 @@ import { useState } from 'react';
 import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
 
+interface User {
+  id?: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+}
+
 interface AdminLayoutProps {
   children: React.ReactNode;
   activeTab: string;
   onTabChange: (tab: string) => void;
   title: string;
   subtitle?: string;
+  user?: User;
+  onSignOut?: () => void;
 }
 
 export function AdminLayout({ 
@@ -17,14 +26,15 @@ export function AdminLayout({
   activeTab, 
   onTabChange, 
   title, 
-  subtitle 
+  subtitle,
+  user,
+  onSignOut
 }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
       <div className="flex h-screen">
-        {/* Sidebar */}
         <aside className={`
           fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-in-out
           lg:relative lg:translate-x-0
@@ -33,7 +43,6 @@ export function AdminLayout({
           <Sidebar activeTab={activeTab} onTabChange={onTabChange} />
         </aside>
 
-        {/* Sidebar overlay for mobile */}
         {sidebarOpen && (
           <div 
             className="fixed inset-0 z-40 bg-black/50 lg:hidden"
@@ -41,16 +50,15 @@ export function AdminLayout({
           />
         )}
 
-        {/* Main content area */}
         <div className="flex flex-1 flex-col min-w-0">
-          {/* Topbar */}
           <Topbar 
             title={title} 
             subtitle={subtitle}
             onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+            user={user}
+            onSignOut={onSignOut}
           />
 
-          {/* Main content */}
           <main className="flex-1 overflow-auto bg-background">
             <div className="container mx-auto px-4 py-4">
               {children}

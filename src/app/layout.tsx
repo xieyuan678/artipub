@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Providers } from "@/components/providers";
+import { ToastProvider } from "@/components/toast";
 
 export const metadata: Metadata = {
   title: "ArtiPub AI - AI-Powered Article Publishing Platform",
@@ -21,7 +23,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <Providers>
+            <ToastProvider>
+              {children}
+            </ToastProvider>
+          </Providers>
         </ThemeProvider>
       </body>
     </html>

@@ -18,17 +18,33 @@ import {
   Menu
 } from 'lucide-react';
 
+interface User {
+  id?: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+}
+
 interface TopbarProps {
   title: string;
   subtitle?: string;
   onMenuClick?: () => void;
+  user?: User;
+  onSignOut?: () => void;
 }
 
-export function Topbar({ title, subtitle, onMenuClick }: TopbarProps) {
+export function Topbar({ title, subtitle, onMenuClick, user, onSignOut }: TopbarProps) {
+  const displayName = user?.name || user?.email?.split('@')[0] || 'User';
+  const displayEmail = user?.email || 'user@example.com';
+  const displayImage = user?.image;
+
+  const handleSignOut = () => {
+    onSignOut?.();
+  };
+
   return (
     <header className="sticky top-0 z-30 bg-background border-b border-border">
       <div className="flex h-14 items-center justify-between px-4">
-        {/* Left side - Title and Menu */}
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
@@ -46,27 +62,29 @@ export function Topbar({ title, subtitle, onMenuClick }: TopbarProps) {
           </div>
         </div>
 
-        {/* Right side - Theme, User Menu */}
         <div className="flex items-center gap-1">
-          {/* Theme Toggle */}
           <ThemeToggle />
 
-          {/* User Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full p-0">
                 <Avatar className="h-7 w-7">
-                  <AvatarImage src="/avatars/01.png" alt="@artipub" />
-                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">AP</AvatarFallback>
+                  {displayImage ? (
+                    <AvatarImage src={displayImage} alt={displayName} />
+                  ) : (
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                      {displayName.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  )}
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-48" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">ArtiPub User</p>
+                  <p className="text-sm font-medium">{displayName}</p>
                   <p className="text-xs text-muted-foreground">
-                    user@artipub.ai
+                    {displayEmail}
                   </p>
                 </div>
               </DropdownMenuLabel>
@@ -80,7 +98,7 @@ export function Topbar({ title, subtitle, onMenuClick }: TopbarProps) {
                 <span>Settings</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSignOut} className="text-red-500 hover:text-red-600">
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Log out</span>
               </DropdownMenuItem>

@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSession, signOut } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PLATFORMS } from '@/lib/types';
 import { ArticleEditor } from '@/components/article-editor';
@@ -11,6 +13,31 @@ import { AdminLayout } from '@/components/layout/admin-layout';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<string>('create');
+  const [isLoading, setIsLoading] = useState(true);
+  
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status !== 'loading') {
+      setIsLoading(false);
+      if (!session) {
+        router.push('/auth/signin');
+      }
+    }
+  }, [session, status, router]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return null;
+  }
 
   const getPageTitle = () => {
     switch (activeTab) {
@@ -47,7 +74,6 @@ export default function Home() {
       case 'create':
         return (
           <div className="max-w-6xl mx-auto space-y-6">
-            {/* Hero Section */}
             <Card className="bg-muted/30">
               <CardHeader className="text-center">
                 <CardTitle className="text-xl font-semibold">
@@ -62,7 +88,8 @@ export default function Home() {
                   {PLATFORMS.map((platform) => (
                     <div
                       key={platform.id}
-                      className="flex flex-col items-center p-3 bg-card rounded border border-border hover:border-primary/50 transition-colors"
+                      className="flex flex-col items-center p-3 bg-card rounded border border-border hover:border-primary/50 transition-colors cursor-pointer"
+                      title={`Publish to ${platform.displayName}`}
                     >
                       <div 
                         className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
@@ -79,7 +106,6 @@ export default function Home() {
               </CardContent>
             </Card>
 
-            {/* Article Editor */}
             <ArticleEditor />
           </div>
         );
@@ -94,12 +120,18 @@ export default function Home() {
     }
   };
 
+  const handleSignOut = () => {
+    signOut({ redirect: true, callbackUrl: '/auth/signin' });
+  };
+
   return (
     <AdminLayout
       activeTab={activeTab}
       onTabChange={setActiveTab}
       title={getPageTitle()}
       subtitle={getPageSubtitle()}
+      user={session.user}
+      onSignOut={handleSignOut}
     >
       {renderContent()}
     </AdminLayout>
