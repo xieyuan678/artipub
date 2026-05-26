@@ -65,6 +65,7 @@ export function SettingsPage() {
     setSaveMessage('');
     
     try {
+      console.log('Saving API keys...');
       const response = await fetch('/api/ai/keys', {
         method: 'POST',
         headers: {
@@ -78,20 +79,24 @@ export function SettingsPage() {
         }),
       });
 
+      console.log(`Response status: ${response.status}`);
+      
       if (response.ok) {
         setSaveMessage('API keys saved successfully!');
         if (!openaiKey.includes('*')) setOpenaiKey('*'.repeat(openaiKey.length));
         if (!anthropicKey.includes('*')) setAnthropicKey('*'.repeat(anthropicKey.length));
         if (!deepseekKey.includes('*')) setDeepseekKey('*'.repeat(deepseekKey.length));
       } else {
-        setSaveMessage('Failed to save API keys');
+        const errorData = await response.json();
+        console.error('Error response:', errorData);
+        setSaveMessage(`Failed to save API keys: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error saving AI keys:', error);
-      setSaveMessage('Failed to save API keys');
+      setSaveMessage(`Failed to save API keys: ${(error as Error).message}`);
     } finally {
       setIsSaving(false);
-      setTimeout(() => setSaveMessage(''), 3000);
+      setTimeout(() => setSaveMessage(''), 5000);
     }
   };
 
@@ -102,6 +107,7 @@ export function SettingsPage() {
     setIsSaving(true);
     
     try {
+      console.log(`Connecting to ${platformId}...`);
       const response = await fetch('/api/platforms/credentials', {
         method: 'POST',
         headers: {
@@ -115,15 +121,21 @@ export function SettingsPage() {
         }),
       });
 
+      console.log(`Response status: ${response.status}`);
+      
       if (response.ok) {
         setPlatformStatus(prev => ({ ...prev, [platformId]: 'connected' }));
         alert(`${platform.displayName} connected successfully!`);
+        // Reload platform status to be sure
+        await loadPlatformStatus();
       } else {
-        alert(`Failed to connect ${platform.displayName}`);
+        const errorData = await response.json();
+        console.error('Error response:', errorData);
+        alert(`Failed to connect ${platform.displayName}: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error connecting platform:', error);
-      alert(`Failed to connect ${platform.displayName}`);
+      alert(`Failed to connect ${platform.displayName}: ${(error as Error).message}`);
     } finally {
       setIsSaving(false);
     }

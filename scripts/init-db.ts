@@ -42,14 +42,12 @@ async function initDatabase() {
       CREATE TABLE IF NOT EXISTS platform_credentials (
         id TEXT PRIMARY KEY,
         user_id TEXT REFERENCES users(id),
-        platform TEXT NOT NULL,
-        access_token TEXT,
-        refresh_token TEXT,
-        cookies TEXT,
-        expires_at TIMESTAMP,
+        platform_id TEXT NOT NULL,
+        cookies JSONB,
+        api_key TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(user_id, platform)
+        UNIQUE(user_id, platform_id)
       )
     `;
 
@@ -71,11 +69,12 @@ async function initDatabase() {
     await sql`
       CREATE TABLE IF NOT EXISTS publishing_tasks (
         id TEXT PRIMARY KEY,
+        article_id TEXT REFERENCES articles(id),
         user_id TEXT REFERENCES users(id),
-        article_id TEXT,
-        platform TEXT NOT NULL,
+        platforms TEXT[],
         status TEXT DEFAULT 'pending',
-        result JSONB,
+        results JSONB,
+        strategy JSONB,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )

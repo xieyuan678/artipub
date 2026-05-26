@@ -1,5 +1,3 @@
-'use server';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne } from '@/lib/db/connection';
 import { TABLES, type PlatformCredential } from '@/lib/db/schema';
