@@ -27,6 +27,18 @@ export function SettingsPage() {
     alert('API keys saved successfully!');
   };
 
+  const handleConnectPlatform = (platformId: string) => {
+    alert(`Connecting to ${platformId}...`);
+  };
+
+  const handleToggleNotification = (notificationType: string) => {
+    alert(`Toggling ${notificationType} notifications...`);
+  };
+
+  const handleEditProfile = () => {
+    alert('Editing profile...');
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -147,7 +159,7 @@ export function SettingsPage() {
                     </p>
                   </div>
                 </div>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => handleConnectPlatform(platform.id)}>
                   {platform.id === 'zhihu' ? 'Reconfigure' : 'Connect'}
                 </Button>
               </div>
@@ -174,21 +186,21 @@ export function SettingsPage() {
                 <h4 className="font-medium">Email Notifications</h4>
                 <p className="text-sm text-muted-foreground">Get notified when articles are published</p>
               </div>
-              <Button variant="outline" size="sm">Enabled</Button>
+              <Button variant="outline" size="sm" onClick={() => handleToggleNotification('email')}>Enabled</Button>
             </div>
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-medium">Publishing Alerts</h4>
                 <p className="text-sm text-muted-foreground">Alert when publishing fails</p>
               </div>
-              <Button variant="outline" size="sm">Enabled</Button>
+              <Button variant="outline" size="sm" onClick={() => handleToggleNotification('publishing')}>Enabled</Button>
             </div>
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-medium">Weekly Reports</h4>
                 <p className="text-sm text-muted-foreground">Weekly publishing performance summary</p>
               </div>
-              <Button variant="outline" size="sm">Disabled</Button>
+              <Button variant="outline" size="sm" onClick={() => handleToggleNotification('weekly')}>Disabled</Button>
             </div>
           </div>
         </CardContent>
@@ -217,7 +229,7 @@ export function SettingsPage() {
                 <p className="text-sm text-muted-foreground mt-1">user@artipub.ai</p>
               </div>
             </div>
-            <Button variant="outline" size="sm">Edit Profile</Button>
+            <Button variant="outline" size="sm" onClick={handleEditProfile}>Edit Profile</Button>
           </div>
         </CardContent>
       </Card>
