@@ -234,9 +234,9 @@ export class AISpecDiscoveryService {
         const validationResult = await this.validateWorkflow(spec, options.testArticle);
         
         if (!validationResult.success) {
-          session.errors = validationResult.errors;
+          session.errors = validationResult.errors ?? [];
           if (options?.supervisionMode !== 'none') {
-            await this.requestSupervisionForErrors(sessionId, validationResult.errors);
+            await this.requestSupervisionForErrors(sessionId, validationResult.errors ?? []);
           }
         }
       }
