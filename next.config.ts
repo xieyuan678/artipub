@@ -3,9 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   transpilePackages: [],
-  experimental: {
-    typedRoutes: false,
-  },
+  typedRoutes: false,
   // Exclude backend directory from Next.js build
   webpack: (config, { isServer }) => {
     config.module.rules.push({

@@ -4,45 +4,59 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getPlatformById } from "../lib/types";
-import { publishingService } from '@/lib/ai-publishing-service';
 import { PublishingTask } from '@/lib/types';
 
 export function PublishingDashboard() {
   const [tasks, setTasks] = useState<PublishingTask[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     loadTasks();
-    
-    // Auto-refresh every 3 seconds
-    const interval = setInterval(loadTasks, 3000);
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
   }, []);
 
-  const loadTasks = () => {
-    const allTasks = publishingService.getAllTasks();
-    setTasks(allTasks.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()));
+  const loadTasks = async () => {
+    setIsRefreshing(true);
+    try {
+      const response = await fetch('/api/publish');
+      if (response.ok) {
+        const data = await response.json();
+        setTasks(data.sort((a: PublishingTask, b: PublishingTask) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        ));
+      }
+    } catch (error) {
+      console.error('Failed to load tasks:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
-  const handleCancelTask = (taskId: string) => {
-    publishingService.cancelTask(taskId);
-    loadTasks();
+  const handleCancelTask = async (taskId: string) => {
+    try {
+      const response = await fetch(`/api/publish/${taskId}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        loadTasks();
+      }
+    } catch (error) {
+      console.error('Failed to cancel task:', error);
+    }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'success': return 'text-green-600 bg-green-50';
+      case 'completed': return 'text-green-600 bg-green-50';
       case 'failed': return 'text-red-600 bg-red-50';
       case 'pending': return 'text-yellow-600 bg-yellow-50';
+      case 'processing': return 'text-blue-600 bg-blue-50';
       default: return 'text-gray-600 bg-gray-50';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'success': return '✅';
+      case 'completed': return '✅';
       case 'failed': return '❌';
       case 'pending': return '⏳';
       case 'processing': return '🔄';
@@ -54,8 +68,15 @@ export function PublishingDashboard() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">📊 Publishing Dashboard</h2>
-        <Button onClick={loadTasks} variant="outline">
-          🔄 Refresh
+        <Button onClick={loadTasks} variant="outline" disabled={isRefreshing}>
+          {isRefreshing ? (
+            <>
+              <span className="animate-spin mr-2">🔄</span>
+              Refreshing...
+            </>
+          ) : (
+            <>🔄 Refresh</>
+          )}
         </Button>
       </div>
 
@@ -78,10 +99,10 @@ export function PublishingDashboard() {
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       {getStatusIcon(task.status)}
-                      Task {task.id}
+                      Task {task.id.substring(0, 8)}...
                     </CardTitle>
                     <div className="text-sm text-gray-500 mt-1">
-                      Created: {task.createdAt.toLocaleString()}
+                      Created: {new Date(task.createdAt).toLocaleString()}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -101,39 +122,12 @@ export function PublishingDashboard() {
                 </div>
               </CardHeader>
               <CardContent>
-                {/* AI Strategy Display */}
-                {task.strategy && (
-                  <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                    <div className="font-medium text-blue-900 mb-2">🤖 AI Publishing Strategy</div>
-                    <div className="text-sm text-blue-800 space-y-1">
-                      <div>
-                        <span className="font-medium">Recommended Platforms:</span>{' '}
-                        {task.strategy.recommendedPlatforms?.join(', ') || 'Analyzing...'}
-                      </div>
-                      {task.strategy.publishingSchedule?.immediate?.length > 0 && (
-                        <div>
-                          <span className="font-medium">Immediate Publish:</span>{' '}
-                          {task.strategy.publishingSchedule.immediate.join(', ')}
-                        </div>
-                      )}
-                      {task.strategy.publishingSchedule?.delayed?.length > 0 && (
-                        <div>
-                          <span className="font-medium">Scheduled:</span>{' '}
-                          {task.strategy.publishingSchedule.delayed.map(d => 
-                            `${d.platform} (${d.delayMinutes}min delay)`
-                          ).join(', ')}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
                 {/* Platform Results */}
                 <div className="grid gap-3">
                   <div className="font-medium text-gray-900">Platform Publishing Status:</div>
                   {task.platforms.map((platformId) => {
                     const platform = getPlatformById(platformId);
-                    const result = task.results[platformId];
+                    const result = task.results?.[platformId];
                     
                     if (!platform) return null;
 

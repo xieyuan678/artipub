@@ -1,16 +1,32 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
   Globe, 
   Key, 
   Bell, 
-  User
+  User,
+  Sparkles
 } from 'lucide-react';
 import { PLATFORMS } from '@/lib/types';
+import { AI_PROVIDERS, AIProviderType } from '@/lib/ai/providers';
 
 export function SettingsPage() {
+  const [selectedProvider, setSelectedProvider] = useState<AIProviderType>('openai');
+  const [openaiKey, setOpenaiKey] = useState('');
+  const [anthropicKey, setAnthropicKey] = useState('');
+  const [deepseekKey, setDeepseekKey] = useState('');
+
+  const handleProviderChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedProvider(event.target.value as AIProviderType);
+  };
+
+  const handleSaveKeys = () => {
+    alert('API keys saved successfully!');
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -19,6 +35,88 @@ export function SettingsPage() {
           Manage your account settings and platform configurations.
         </p>
       </div>
+
+      {/* AI Provider Selection */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5" />
+            AI Provider Settings
+          </CardTitle>
+          <CardDescription>
+            Choose your preferred AI service provider and configure API keys.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium mb-2">Default AI Provider</label>
+              <select
+                value={selectedProvider}
+                onChange={handleProviderChange}
+                className="w-[200px] p-2 border border-border bg-background text-foreground rounded focus:ring-1 focus:ring-ring focus:border-ring"
+              >
+                {AI_PROVIDERS.map((provider) => (
+                  <option key={provider.type} value={provider.type}>
+                    {provider.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground mt-2">
+                Selected: {AI_PROVIDERS.find(p => p.type === selectedProvider)?.name}
+              </p>
+            </div>
+
+            <div className="border-t pt-4">
+              <h4 className="font-medium mb-4">API Keys Configuration</h4>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">OpenAI API Key</label>
+                  <input
+                    type="password"
+                    value={openaiKey}
+                    onChange={(e) => setOpenaiKey(e.target.value)}
+                    placeholder="sk-..."
+                    className="w-full p-2 border border-border bg-background text-foreground rounded focus:ring-1 focus:ring-ring focus:border-ring text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Required for OpenAI models (gpt-4o, gpt-4, etc.)
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Anthropic API Key</label>
+                  <input
+                    type="password"
+                    value={anthropicKey}
+                    onChange={(e) => setAnthropicKey(e.target.value)}
+                    placeholder="sk-..."
+                    className="w-full p-2 border border-border bg-background text-foreground rounded focus:ring-1 focus:ring-ring focus:border-ring text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Required for Anthropic models (Claude 3 series)
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">DeepSeek API Key</label>
+                  <input
+                    type="password"
+                    value={deepseekKey}
+                    onChange={(e) => setDeepseekKey(e.target.value)}
+                    placeholder="sk-..."
+                    className="w-full p-2 border border-border bg-background text-foreground rounded focus:ring-1 focus:ring-ring focus:border-ring text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Required for DeepSeek models (deepseek-chat, deepseek-r1)
+                  </p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" className="mt-4" onClick={handleSaveKeys}>
+                Save API Keys
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Platform Configuration */}
       <Card>
@@ -54,37 +152,6 @@ export function SettingsPage() {
                 </Button>
               </div>
             ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* API Keys */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Key className="w-5 h-5" />
-            API Keys
-          </CardTitle>
-          <CardDescription>
-            Manage your AI service API keys and authentication.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 border rounded-lg">
-              <div>
-                <h4 className="font-medium">OpenAI API Key</h4>
-                <p className="text-sm text-muted-foreground">sk-••••••••••••••••••••••••••••••••••••••••••••••••••••</p>
-              </div>
-              <Button variant="outline" size="sm">Update</Button>
-            </div>
-            <div className="flex items-center justify-between p-4 border rounded-lg">
-              <div>
-                <h4 className="font-medium">Anthropic API Key</h4>
-                <p className="text-sm text-muted-foreground">sk-••••••••••••••••••••••••••••••••••••••••••••••••••••</p>
-              </div>
-              <Button variant="outline" size="sm">Update</Button>
-            </div>
           </div>
         </CardContent>
       </Card>

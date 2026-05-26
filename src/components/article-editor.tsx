@@ -4,8 +4,6 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PLATFORMS, Article } from '@/lib/types';
-import { publishingService } from '@/lib/ai-publishing-service';
-import { generateId } from '@/lib/utils';
 
 export function ArticleEditor() {
   const [title, setTitle] = useState('');
@@ -13,6 +11,7 @@ export function ArticleEditor() {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishingResult, setPublishingResult] = useState<string | null>(null);
+  const [isOptimizing, setIsOptimizing] = useState(false);
 
   const handlePlatformToggle = (platformId: string) => {
     setSelectedPlatforms(prev => 
@@ -20,6 +19,72 @@ export function ArticleEditor() {
         ? prev.filter(id => id !== platformId)
         : [...prev, platformId]
     );
+  };
+
+  const handleOptimize = async () => {
+    if (!title.trim() || !content.trim()) {
+      alert('Please fill in title and content');
+      return;
+    }
+
+    setIsOptimizing(true);
+
+    try {
+      const response = await fetch('/api/ai/optimize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title,
+          content,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setTitle(result.title || title);
+        setContent(result.platformSpecificContent?.zhihu || content);
+        alert('Article optimized successfully!');
+      } else {
+        alert('Optimization failed, using fallback');
+      }
+    } catch (error) {
+      console.error('Optimization failed:', error);
+      alert('Optimization failed, please try again');
+    } finally {
+      setIsOptimizing(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    if (!title.trim() || !content.trim()) {
+      alert('Please fill in title and content');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/articles', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title,
+          content,
+          userId: 'default-user',
+        }),
+      });
+
+      if (response.ok) {
+        alert('Draft saved successfully!');
+      } else {
+        alert('Failed to save draft');
+      }
+    } catch (error) {
+      console.error('Save draft failed:', error);
+      alert('Failed to save draft');
+    }
   };
 
   const handlePublish = async () => {
@@ -32,24 +97,46 @@ export function ArticleEditor() {
     setPublishingResult(null);
 
     try {
-      const article: Article = {
-        id: generateId(),
-        title,
-        content,
-        tags: [],
-        author: 'User',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        status: 'draft'
-      };
+      const articleResponse = await fetch('/api/articles', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title,
+          content,
+          userId: 'default-user',
+        }),
+      });
 
-      const taskId = await publishingService.createPublishingTask(article, selectedPlatforms);
-      setPublishingResult(taskId);
-      
-      // Clear form
-      setTitle('');
-      setContent('');
-      setSelectedPlatforms([]);
+      if (!articleResponse.ok) {
+        throw new Error('Failed to create article');
+      }
+
+      const article = await articleResponse.json();
+
+      const publishResponse = await fetch('/api/publish', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          articleId: article.id,
+          platformIds: selectedPlatforms,
+          userId: 'default-user',
+        }),
+      });
+
+      if (publishResponse.ok) {
+        const result = await publishResponse.json();
+        setPublishingResult(result.taskId);
+        
+        setTitle('');
+        setContent('');
+        setSelectedPlatforms([]);
+      } else {
+        throw new Error('Failed to create publishing task');
+      }
     } catch (error) {
       console.error('Publishing failed:', error);
       alert('Publishing failed. Please try again.');
@@ -65,7 +152,32 @@ export function ArticleEditor() {
           <CardTitle>✍️ Create New Article</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Title Input */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Button
+              onClick={handleSaveDraft}
+              disabled={!title.trim() || !content.trim()}
+              variant="outline"
+            >
+              💾 Save Draft
+            </Button>
+            <Button
+              onClick={handleOptimize}
+              disabled={!title.trim() || !content.trim() || isOptimizing}
+              variant="outline"
+            >
+              {isOptimizing ? (
+                <>
+                  <span className="animate-spin mr-2">⚡</span>
+                  Optimizing...
+                </>
+              ) : (
+                <>
+                  ✨ AI Optimize
+                </>
+              )}
+            </Button>
+          </div>
+
           <div>
             <label className="block text-sm font-medium mb-2">Article Title</label>
             <input
@@ -74,10 +186,10 @@ export function ArticleEditor() {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter your article title..."
               className="w-full p-3 border border-border bg-background text-foreground rounded focus:ring-1 focus:ring-ring focus:border-ring"
+              maxLength={100}
             />
           </div>
 
-          {/* Content Input */}
           <div>
             <label className="block text-sm font-medium mb-2">Article Content</label>
             <textarea
@@ -85,11 +197,10 @@ export function ArticleEditor() {
               onChange={(e) => setContent(e.target.value)}
               placeholder="Write your article content here... (Markdown supported)"
               rows={12}
-              className="w-full p-3 border border-border bg-background text-foreground rounded focus:ring-1 focus:ring-ring focus:border-ring resize-none"
+              className="w-full p-3 border border-border bg-background text-foreground rounded focus:ring-1 focus:ring-ring focus:border-ring resize-none font-mono text-sm"
             />
           </div>
 
-          {/* Platform Selection */}
           <div>
             <label className="block text-sm font-medium mb-3">Select Publishing Platforms</label>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -118,7 +229,6 @@ export function ArticleEditor() {
             </div>
           </div>
 
-          {/* Publish Button */}
           <div className="flex justify-end pt-4">
             <Button 
               onClick={handlePublish}
@@ -138,7 +248,6 @@ export function ArticleEditor() {
             </Button>
           </div>
 
-          {/* Publishing Result */}
           {publishingResult && (
             <div className="mt-4 p-4 bg-accent border border-border rounded">
               <div className="text-accent-foreground font-medium">
@@ -147,36 +256,11 @@ export function ArticleEditor() {
               <div className="text-sm text-muted-foreground mt-1">
                 Task ID: {publishingResult}
               </div>
-              <div className="text-sm text-muted-foreground">
-                Switch to the Publishing Dashboard to monitor progress.
+              <div className="text-xs text-muted-foreground mt-2">
+                You can check the status in the Publishing Dashboard
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* AI Features Info */}
-      <Card className="bg-muted/50">
-        <CardContent className="pt-4">
-          <h3 className="font-semibold text-foreground mb-3">🤖 AI-Powered Features</h3>
-          <div className="grid md:grid-cols-2 gap-4 text-sm text-muted-foreground">
-            <div>
-              <div className="font-medium text-foreground">Smart Content Optimization</div>
-              <div>AI adapts your content for each platform&apos;s audience and format</div>
-            </div>
-            <div>
-              <div className="font-medium text-foreground">Intelligent Scheduling</div>
-              <div>AI determines optimal posting times for maximum engagement</div>
-            </div>
-            <div>
-              <div className="font-medium text-foreground">SEO Enhancement</div>
-              <div>Automatic keyword optimization and metadata generation</div>
-            </div>
-            <div>
-              <div className="font-medium text-foreground">Multi-Platform Publishing</div>
-              <div>Simultaneous publishing to all selected platforms</div>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>
