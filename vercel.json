@@ -10,3 +10,11 @@
         }
     }
 }
+{
+  "services": {
+    "backend": {
+      "framework": "nodejs",  // 你的语言/框架（nodejs/python/java等）
+      "entrypoint": "index.js" // 你的主文件（app.py/main.jar等）
+    }
+  }
+}
